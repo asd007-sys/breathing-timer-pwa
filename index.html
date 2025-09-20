@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Breathing Timer</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="https://placehold.co/192x192/00aaff/ffffff?text=Breathing">
+    <meta name="theme-color" content="#ffffff"/>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+    </style>
+</head>
+<body class="bg-blue-50 flex items-center justify-center min-h-screen p-4">
+    <div class="container bg-white p-6 sm:p-8 rounded-2xl shadow-xl max-w-lg w-full text-center space-y-6">
+        <h1 class="text-3xl sm:text-4xl font-extrabold text-blue-800">Breathing Timer</h1>
+        <p class="text-gray-600 text-lg">7 seconds inhale, 21 seconds exhale</p>
+        
+        <div class="breath-status text-2xl sm:text-3xl font-bold transition-colors duration-500" id="breathStatus" aria-live="assertive">Ready</div>
+        <div class="timer-display text-5xl sm:text-6xl font-mono mt-4 mb-2 text-gray-800" id="timer" aria-live="polite">00:00</div>
+        
+        <div class="progress-container w-full h-5 bg-gray-200 rounded-full overflow-hidden shadow-inner">
+            <div class="progress-bar h-full rounded-full transition-[width] duration-100 ease-linear" id="progressBar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+        
+        <div class="round-counter text-gray-500 text-base sm:text-lg" id="roundCounter">Round: 0/1000</div>
+        
+        <div class="controls flex justify-center gap-4 flex-wrap mt-6">
+            <button id="startBtn" class="px-6 py-3 rounded-full text-lg font-semibold text-white bg-green-500 hover:bg-green-600 focus:outline-none focus:ring-4 focus:ring-green-300 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed shadow-md">Start</button>
+            <button id="pauseBtn" disabled class="px-6 py-3 rounded-full text-lg font-semibold text-white bg-yellow-500 hover:bg-yellow-600 focus:outline-none focus:ring-4 focus:ring-yellow-300 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed shadow-md">Pause</button>
+            <button id="resetBtn" disabled class="px-6 py-3 rounded-full text-lg font-semibold text-white bg-red-500 hover:bg-red-600 focus:outline-none focus:ring-4 focus:ring-red-300 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed shadow-md">Reset</button>
+        </div>
+        
+        <div class="feature-controls mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <fieldset>
+                <legend class="text-xl font-bold text-gray-700 mb-4">Additional Features</legend>
+                <div class="flex flex-col sm:flex-row justify-center items-center gap-4">
+                    <div class="flex items-center gap-2">
+                        <label for="vibrateToggle" class="flex items-center cursor-pointer">
+                            <input type="checkbox" id="vibrateToggle" checked class="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                            <span class="ml-2 text-gray-700">Enable Vibration</span>
+                        </label>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <label for="wakeLockToggle" class="flex items-center cursor-pointer">
+                            <input type="checkbox" id="wakeLockToggle" class="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                            <span class="ml-2 text-gray-700">Keep Screen On</span>
+                        </label>
+                    </div>
+                </div>
+            </fieldset>
+        </div>
+
+        <div class="sound-controls mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <fieldset>
+                <legend class="text-xl font-bold text-gray-700 mb-4">Sound Options</legend>
+                <div class="sound-options space-y-4">
+                    <div class="flex items-center justify-center gap-3">
+                        <label for="soundToggle" class="flex items-center cursor-pointer">
+                            <input type="checkbox" id="soundToggle" checked class="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                            <span class="ml-2 text-gray-700">Enable sounds</span>
+                        </label>
+                    </div>
+                    <div class="flex items-center justify-center gap-3">
+                        <label for="soundType" class="text-gray-700">Sound Type:</label>
+                        <select id="soundType" class="rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-gray-700 shadow-sm px-3 py-2">
+                            <option value="beep">Beeps</option>
+                            <option value="voice">Voice Cues</option>
+                            <option value="nature">Nature Sounds</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center justify-center gap-3">
+                        <label for="volumeControl" class="text-gray-700">Volume:</label>
+                        <input type="range" id="volumeControl" min="0" max="1" step="0.05" value="0.5" class="w-40 h-2 bg-blue-100 rounded-lg appearance-none cursor-pointer">
+                    </div>
+                </div>
+            </fieldset>
+        </div>
+    </div>
+
+    <script>
+        // Check if the service worker is supported and register it
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('service-worker.js')
+                .then(registration => {
+                    console.log('Service Worker registered with scope:', registration.scope);
+                })
+                .catch(err => {
+                    console.log('Service Worker registration failed:', err);
+                });
+            });
+        }
+    
+        // DOM elements
+        const timerDisplay = document.getElementById('timer');
+        const breathStatus = document.getElementById('breathStatus');
+        const progressBar = document.getElementById('progressBar');
+        const roundCounter = document.getElementById('roundCounter');
+        const startBtn = document.getElementById('startBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const soundToggle = document.getElementById('soundToggle');
+        const soundType = document.getElementById('soundType');
+        const volumeControl = document.getElementById('volumeControl');
+        const vibrateToggle = document.getElementById('vibrateToggle');
+        const wakeLockToggle = document.getElementById('wakeLockToggle');
+
+        // Audio elements - using base64 encoded sounds for offline use
+        let audioContext;
+        let currentSound = null;
+        
+        // Simple beep generator
+        function playBeep(frequency, duration) {
+            if (!soundToggle.checked) return;
+            
+            try {
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                
+                if (currentSound) {
+                    currentSound.stop();
+                }
+                
+                const volume = parseFloat(volumeControl.value);
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.type = 'sine';
+                oscillator.frequency.value = frequency;
+                gainNode.gain.value = volume;
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.start();
+                currentSound = oscillator;
+                oscillator.stop(audioContext.currentTime + (duration/1000));
+            } catch (e) {
+                console.log("Audio error:", e);
+            }
+        }
+        
+        // Voice cues using SpeechSynthesis
+        function playVoice(text) {
+            if (!soundToggle.checked) return;
+            
+            try {
+                const volume = parseFloat(volumeControl.value);
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.volume = volume;
+                window.speechSynthesis.speak(utterance);
+            } catch (e) {
+                console.log("Speech error:", e);
+            }
+        }
+        
+        // Nature sounds (using simple oscillators)
+        function playNatureSound(type) {
+            if (!soundToggle.checked) return;
+            
+            try {
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                
+                if (currentSound) {
+                    currentSound.stop();
+                }
+                
+                const volume = parseFloat(volumeControl.value);
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                // Different oscillator settings for different nature sounds
+                if (type === 'inhale') {
+                    oscillator.type = 'sine';
+                    oscillator.frequency.setValueAtTime(440, audioContext.currentTime);
+                    oscillator.frequency.linearRampToValueAtTime(880, audioContext.currentTime + 6.5);
+                } else { // exhale
+                    oscillator.type = 'sine';
+                    oscillator.frequency.setValueAtTime(660, audioContext.currentTime);
+                    oscillator.frequency.linearRampToValueAtTime(220, audioContext.currentTime + 20.5);
+                }
+                
+                gainNode.gain.value = volume;
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.start();
+                currentSound = oscillator;
+                oscillator.stop(audioContext.currentTime + 21.5);
+            } catch (e) {
+                console.log("Audio error:", e);
+            }
+        }
+        
+        // Play sound based on current settings
+        function playPhaseSound() {
+            const soundPref = soundType.value;
+            
+            if (soundPref === 'beep') {
+                if (currentPhase === 'inhale') {
+                    playBeep(880, 300); // Higher pitch for inhale
+                } else {
+                    playBeep(440, 300); // Lower pitch for exhale
+                }
+            } 
+            else if (soundPref === 'voice') {
+                if (currentPhase === 'inhale') {
+                    playVoice("Breathe in");
+                } else {
+                    playVoice("Breathe out");
+                }
+            }
+            else if (soundPref === 'nature') {
+                playNatureSound(currentPhase);
+            }
+        }
+
+        // Vibrate function with patterns
+        function playVibration(pattern) {
+            if ('vibrate' in navigator && vibrateToggle.checked) {
+                navigator.vibrate(pattern);
+            }
+        }
+
+        // Wake Lock
+        let wakeLock = null;
+        async function acquireWakeLock() {
+            if ('wakeLock' in navigator && wakeLockToggle.checked) {
+                try {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    wakeLock.addEventListener('release', () => {
+                        console.log('Wake Lock was released');
+                        wakeLockToggle.checked = false;
+                    });
+                    console.log('Wake Lock acquired!');
+                } catch (err) {
+                    console.log(`${err.name}, ${err.message}`);
+                    wakeLockToggle.checked = false;
+                }
+            }
+        }
+
+        async function releaseWakeLock() {
+            if (wakeLock !== null) {
+                await wakeLock.release();
+                wakeLock = null;
+                console.log('Wake Lock released!');
+            }
+        }
+
+        // Timer variables
+        let timer;
+        let seconds = 0;
+        let isRunning = false;
+        let currentPhase = 'inhale'; // 'inhale' or 'exhale'
+        let round = 0;
+        const totalRounds = 1000;
+        const inhaleDuration = 7;
+        const exhaleDuration = 21;
+
+        // Update the timer display
+        function updateDisplay() {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            timerDisplay.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            
+            // Update round counter
+            roundCounter.textContent = `Round: ${round}/${totalRounds}`;
+            
+            // Update progress bar
+            const totalPhaseTime = currentPhase === 'inhale' ? inhaleDuration : exhaleDuration;
+            const progress = (seconds / totalPhaseTime) * 100;
+            progressBar.style.width = `${progress}%`;
+            progressBar.setAttribute('aria-valuenow', Math.round(progress));
+            
+            // Change progress bar color based on phase
+            progressBar.style.backgroundColor = currentPhase === 'inhale' ? '#4CAF50' : '#2196F3';
+        }
+
+        // Start the timer
+        function startTimer() {
+            if (!isRunning && round < totalRounds) {
+                isRunning = true;
+                currentPhase = 'inhale'; // Start with inhale
+                seconds = 0;
+                breathStatus.textContent = currentPhase === 'inhale' ? 'Breathe In' : 'Breathe Out';
+                breathStatus.style.color = currentPhase === 'inhale' ? '#4CAF50' : '#2196F3';
+                
+                // Enable/disable buttons
+                startBtn.disabled = true;
+                pauseBtn.disabled = false;
+                resetBtn.disabled = false;
+                
+                // Play initial sound and vibration
+                playPhaseSound();
+                playVibration([50, 50, 50, 50, 50]); // Three fast vibrations for inhale
+                
+                // Acquire wake lock
+                acquireWakeLock();
+
+                timer = setInterval(() => {
+                    seconds++;
+                    
+                    const phaseDuration = currentPhase === 'inhale' ? inhaleDuration : exhaleDuration;
+                    
+                    if (seconds >= phaseDuration) {
+                        // Switch phase
+                        if (currentPhase === 'inhale') {
+                            currentPhase = 'exhale';
+                            if (round < totalRounds) round++;
+                        } else {
+                            currentPhase = 'inhale';
+                        }
+                        seconds = 0;
+                        breathStatus.textContent = currentPhase === 'inhale' ? 'Breathe In' : 'Breathe Out';
+                        breathStatus.style.color = currentPhase === 'inhale' ? '#4CAF50' : '#2196F3';
+                        
+                        // Play sound and vibration for phase change
+                        playPhaseSound();
+                        if (currentPhase === 'inhale') {
+                            playVibration([50, 50, 50, 50, 50]); // Three fast for inhale
+                        } else {
+                            playVibration(500); // One long for exhale
+                        }
+                        
+                        // Check if we've completed all rounds
+                        if (round >= totalRounds) {
+                            clearInterval(timer);
+                            isRunning = false;
+                            breathStatus.textContent = 'Completed!';
+                            breathStatus.style.color = '#FF5722';
+                            startBtn.disabled = true;
+                            pauseBtn.disabled = true;
+                            
+                            // Play completion sound if enabled
+                            if (soundToggle.checked) {
+                                if (soundType.value === 'voice') {
+                                    playVoice("Exercise complete");
+                                } else {
+                                    playBeep(523.25, 500); // C5 note
+                                }
+                            }
+
+                            // Release wake lock
+                            releaseWakeLock();
+                        }
+                    }
+                    
+                    updateDisplay();
+                }, 1000);
+            }
+        }
+
+        // Pause the timer
+        function pauseTimer() {
+            clearInterval(timer);
+            isRunning = false;
+            breathStatus.textContent = 'Paused';
+            breathStatus.style.color = '#FF5722';
+            startBtn.disabled = false;
+            pauseBtn.disabled = true;
+            
+            // Stop any ongoing sounds
+            if (currentSound) {
+                currentSound.stop();
+                currentSound = null;
+            }
+
+            // Release wake lock
+            releaseWakeLock();
+        }
+
+        // Reset the timer
+        function resetTimer() {
+            clearInterval(timer);
+            isRunning = false;
+            seconds = 0;
+            round = 0;
+            currentPhase = 'inhale';
+            breathStatus.textContent = 'Ready';
+            breathStatus.style.color = 'black';
+            progressBar.style.width = '0%';
+            progressBar.setAttribute('aria-valuenow', 0);
+            startBtn.disabled = false;
+            pauseBtn.disabled = true;
+            resetBtn.disabled = true;
+            updateDisplay();
+            
+            // Stop any ongoing sounds
+            if (currentSound) {
+                currentSound.stop();
+                currentSound = null;
+            }
+
+            // Release wake lock
+            releaseWakeLock();
+        }
+
+        // Event listeners
+        startBtn.addEventListener('click', startTimer);
+        pauseBtn.addEventListener('click', pauseTimer);
+        resetBtn.addEventListener('click', resetTimer);
+        
+        // Test sound when changing sound type
+        soundType.addEventListener('change', () => {
+            if (soundToggle.checked) {
+                const testPhase = currentPhase || 'inhale';
+                currentPhase = testPhase;
+                playPhaseSound();
+            }
+        });
+        
+        // Initialize display
+        updateDisplay();
+    </script>
+</body>
+</html>
