@@ -104,6 +104,7 @@
                 .catch(err => {
                     console.log('Service Worker registration failed:', err);
                 });
+                console.log("Vibration supported:", 'vibrate' in navigator);
             });
         }
     
@@ -303,7 +304,7 @@
                 isRunning = true;
                 currentPhase = 'inhale'; // Start with inhale
                 seconds = 0;
-                breathStatus.textContent = currentPhase === 'inhale' ? 'Breathe In' : 'Breathe Out';
+                breathStatus.textContent = currentPhase === 'inhale' ? 'Breathe In   lol' : 'Breathe Out';
                 breathStatus.style.color = currentPhase === 'inhale' ? '#4CAF50' : '#2196F3';
                 
                 // Enable/disable buttons
@@ -313,7 +314,7 @@
                 
                 // Play initial sound and vibration
                 playPhaseSound();
-                playVibration([50, 50, 50, 50, 50]); // Three fast vibrations for inhale
+                playVibration(200); // Single vibration for inhale
                 
                 // Acquire wake lock
                 acquireWakeLock();
@@ -338,7 +339,7 @@
                         // Play sound and vibration for phase change
                         playPhaseSound();
                         if (currentPhase === 'inhale') {
-                            playVibration([50, 50, 50, 50, 50]); // Three fast for inhale
+                            playVibration(200); // Simple vibration for inhale
                         } else {
                             playVibration(500); // One long for exhale
                         }
@@ -419,7 +420,7 @@
         // Event listeners
         startBtn.addEventListener('click', () => {
             startTimer();
-            playVibration([50, 50, 50, 50, 50]);
+            playVibration(200);
         });
         pauseBtn.addEventListener('click', () => {
             pauseTimer();
