@@ -63,6 +63,12 @@
                         </label>
                     </div>
                 </div>
+                <div class="flex items-center gap-2 mt-4">
+                    <label for="notificationToggle" class="flex items-center cursor-pointer">
+                        <input type="checkbox" id="notificationToggle" class="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                        <span class="ml-2 text-gray-700">Notification Alerts</span>
+                    </label>
+                </div>
             </fieldset>
         </div>
 
@@ -127,6 +133,7 @@
         const volumeControl = document.getElementById('volumeControl');
         const vibrateToggle = document.getElementById('vibrateToggle');
         const wakeLockToggle = document.getElementById('wakeLockToggle');
+        const notificationToggle = document.getElementById('notificationToggle');
         const vibrationTestBtn = document.getElementById('vibrationTestBtn');
 
         // Audio elements - using base64 encoded sounds for offline use
@@ -283,6 +290,33 @@
             }
         }
 
+        // Notification API functions
+        async function requestNotificationPermission() {
+            if (!('Notification' in window)) {
+                console.log("This browser does not support notifications.");
+                return;
+            }
+            if (Notification.permission === 'granted') {
+                console.log("Notification permission already granted.");
+                return;
+            }
+            if (Notification.permission !== 'denied') {
+                const permission = await Notification.requestPermission();
+                console.log(`Notification permission result: ${permission}`);
+            }
+        }
+
+        function showNotification(title, body, vibrationPattern) {
+            if (notificationToggle.checked && Notification.permission === 'granted') {
+                new Notification(title, {
+                    body: body,
+                    vibrate: vibrationPattern,
+                    renotify: true, // For repeated notifications with the same tag
+                    tag: 'breathing-timer' // Tag to replace previous notifications
+                });
+            }
+        }
+
         // Timer variables
         let timer;
         let seconds = 0;
@@ -328,11 +362,14 @@
                 pauseBtn.disabled = false;
                 resetBtn.disabled = false;
                 
-                // Play initial sound
+                // Play initial sound and vibration
                 playPhaseSound();
+                playVibration(inhaleVibration);
                 
                 // Acquire wake lock
                 acquireWakeLock();
+                // Request notification permission if enabled
+                requestNotificationPermission();
 
                 timer = setInterval(() => {
                     seconds++;
@@ -351,12 +388,14 @@
                         breathStatus.textContent = currentPhase === 'inhale' ? 'Breathe In' : 'Breathe Out';
                         breathStatus.style.color = currentPhase === 'inhale' ? '#4CAF50' : '#2196F3';
                         
-                        // Play sound and vibration for phase change
+                        // Play sound, vibration, and show notification for phase change
                         playPhaseSound();
                         if (currentPhase === 'inhale') {
                             playVibration(inhaleVibration);
+                            showNotification('Breathing Timer', 'Time to Inhale!', inhaleVibration);
                         } else {
                             playVibration(exhaleVibration);
+                            showNotification('Breathing Timer', 'Time to Exhale!', exhaleVibration);
                         }
                         
                         // Check if we've completed all rounds
