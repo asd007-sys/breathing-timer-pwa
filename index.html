@@ -24,6 +24,11 @@
             font-family: 'Inter', sans-serif;
             -webkit-tap-highlight-color: transparent;
         }
+        .vibration-status {
+            font-size: 0.9rem;
+            margin-top: 8px;
+            min-height: 20px;
+        }
     </style>
 </head>
 <body class="bg-blue-50 flex items-center justify-center min-h-screen p-4">
@@ -92,9 +97,10 @@
             </fieldset>
         </div>
         
-        <!-- New Vibration Test Button -->
+        <!-- Vibration Test Button and Status -->
         <div class="vibrate-test mt-6">
             <button id="vibrationTestBtn" class="px-6 py-3 rounded-full text-lg font-semibold text-white bg-indigo-500 hover:bg-indigo-600 focus:outline-none focus:ring-4 focus:ring-indigo-300 transition-colors shadow-md">Test Vibration</button>
+            <div id="vibrationStatus" class="vibration-status text-sm text-gray-600"></div>
         </div>
 
     </div>
@@ -110,7 +116,6 @@
                 .catch(err => {
                     console.log('Service Worker registration failed:', err);
                 });
-                console.log("Vibration supported:", 'vibrate' in navigator);
             });
         }
     
@@ -128,6 +133,20 @@
         const vibrateToggle = document.getElementById('vibrateToggle');
         const wakeLockToggle = document.getElementById('wakeLockToggle');
         const vibrationTestBtn = document.getElementById('vibrationTestBtn');
+        const vibrationStatus = document.getElementById('vibrationStatus');
+
+        // Check if vibration is supported
+        const isVibrationSupported = 'vibrate' in navigator;
+        
+        // Update UI based on vibration support
+        if (!isVibrationSupported) {
+            vibrateToggle.disabled = true;
+            vibrationStatus.textContent = "Vibration not supported on this device/browser";
+            vibrationStatus.style.color = "#e53e3e";
+        } else {
+            vibrationStatus.textContent = "Vibration is supported";
+            vibrationStatus.style.color = "#38a169";
+        }
 
         // Audio elements - using base64 encoded sounds for offline use
         let audioContext;
@@ -243,17 +262,27 @@
             }
         }
 
-        // Vibrate function with patterns
+        // Improved vibration function with better compatibility
         function playVibration(pattern) {
-            if ('vibrate' in navigator && vibrateToggle.checked) {
+            if (!isVibrationSupported || !vibrateToggle.checked) return;
+            
+            try {
+                // Some Android devices don't support pattern vibration
                 if (Array.isArray(pattern)) {
-                    // Try pattern, if it fails, fallback to a simple duration
-                    if (!navigator.vibrate(pattern)) {
-                        navigator.vibrate(200); 
+                    // Try pattern vibration first
+                    const success = navigator.vibrate(pattern);
+                    
+                    // If pattern vibration fails, fall back to simple vibration
+                    if (!success) {
+                        navigator.vibrate(200);
                     }
                 } else {
                     navigator.vibrate(pattern);
                 }
+            } catch (e) {
+                console.error("Vibration error:", e);
+                // If any error occurs, try a simple vibration as last resort
+                navigator.vibrate(200);
             }
         }
 
@@ -292,8 +321,8 @@
         const totalRounds = 1000;
         const inhaleDuration = 7;
         const exhaleDuration = 21;
-        const inhaleVibration = [50, 50, 50]; // Three short bursts
-        const exhaleVibration = 500; // One long pulse
+        const inhaleVibration = 100; // Short vibration for inhale
+        const exhaleVibration = 500; // Longer vibration for exhale
 
         // Update the timer display
         function updateDisplay() {
@@ -330,6 +359,9 @@
                 
                 // Play initial sound
                 playPhaseSound();
+                
+                // Vibrate for initial phase
+                playVibration(inhaleVibration);
                 
                 // Acquire wake lock
                 acquireWakeLock();
@@ -444,18 +476,33 @@
             playVibration(200);
         });
         resetBtn.addEventListener('click', resetTimer);
+        
+        // Improved vibration test with better feedback
         vibrationTestBtn.addEventListener('click', () => {
-            console.log("Testing vibration...");
-            if ('vibrate' in navigator) {
-                console.log("Vibration API is supported. Attempting to vibrate...");
-                const didVibrate = navigator.vibrate(200);
-                if (didVibrate) {
-                    console.log("Vibration was successfully triggered.");
-                } else {
-                    console.log("Vibration was not triggered. Check if system settings allow haptic feedback.");
-                }
+            if (!isVibrationSupported) {
+                vibrationStatus.textContent = "Vibration not supported on this device/browser";
+                vibrationStatus.style.color = "#e53e3e";
+                return;
+            }
+            
+            vibrationStatus.textContent = "Testing vibration...";
+            vibrationStatus.style.color = "#d69e2e";
+            
+            // Test with a simple pattern first
+            const success = navigator.vibrate([100, 50, 100, 50, 100]);
+            
+            if (success) {
+                setTimeout(() => {
+                    vibrationStatus.textContent = "Vibration test successful!";
+                    vibrationStatus.style.color = "#38a169";
+                }, 400);
             } else {
-                console.log("Vibration API is not supported on this device.");
+                // Fallback to simple vibration
+                navigator.vibrate(200);
+                setTimeout(() => {
+                    vibrationStatus.textContent = "Using fallback vibration";
+                    vibrationStatus.style.color = "#d69e2e";
+                }, 250);
             }
         });
         
