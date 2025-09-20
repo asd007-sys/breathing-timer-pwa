@@ -239,7 +239,14 @@
         // Vibrate function with patterns
         function playVibration(pattern) {
             if ('vibrate' in navigator && vibrateToggle.checked) {
-                navigator.vibrate(pattern);
+                if (Array.isArray(pattern)) {
+                    // Try pattern, if it fails, fallback to a simple duration
+                    if (!navigator.vibrate(pattern)) {
+                        navigator.vibrate(200); 
+                    }
+                } else {
+                    navigator.vibrate(pattern);
+                }
             }
         }
 
@@ -278,6 +285,8 @@
         const totalRounds = 1000;
         const inhaleDuration = 7;
         const exhaleDuration = 21;
+        const inhaleVibration = [50, 50, 50]; // Three short bursts
+        const exhaleVibration = 500; // One long pulse
 
         // Update the timer display
         function updateDisplay() {
@@ -304,7 +313,7 @@
                 isRunning = true;
                 currentPhase = 'inhale'; // Start with inhale
                 seconds = 0;
-                breathStatus.textContent = currentPhase === 'inhale' ? 'Breathe In   lol' : 'Breathe Out';
+                breathStatus.textContent = currentPhase === 'inhale' ? 'Breathe In' : 'Breathe Out';
                 breathStatus.style.color = currentPhase === 'inhale' ? '#4CAF50' : '#2196F3';
                 
                 // Enable/disable buttons
@@ -312,9 +321,8 @@
                 pauseBtn.disabled = false;
                 resetBtn.disabled = false;
                 
-                // Play initial sound and vibration
+                // Play initial sound
                 playPhaseSound();
-                playVibration(200); // Single vibration for inhale
                 
                 // Acquire wake lock
                 acquireWakeLock();
@@ -333,15 +341,15 @@
                             currentPhase = 'inhale';
                         }
                         seconds = 0;
-                        breathStatus.textContent = currentPhase === 'inhale' ? 'Breathe In' : 'Breathe Out';
+                        breathStatus.textContent = currentPhase === 'inhale' ? 'Breathe In    vibrate try' : 'Breathe Out';
                         breathStatus.style.color = currentPhase === 'inhale' ? '#4CAF50' : '#2196F3';
                         
                         // Play sound and vibration for phase change
                         playPhaseSound();
                         if (currentPhase === 'inhale') {
-                            playVibration(200); // Simple vibration for inhale
+                            playVibration(inhaleVibration);
                         } else {
-                            playVibration(500); // One long for exhale
+                            playVibration(exhaleVibration);
                         }
                         
                         // Check if we've completed all rounds
@@ -419,8 +427,10 @@
 
         // Event listeners
         startBtn.addEventListener('click', () => {
+            // First, trigger a vibration directly from the user click
+            playVibration(200); 
+            // Then, start the timer
             startTimer();
-            playVibration(200);
         });
         pauseBtn.addEventListener('click', () => {
             pauseTimer();
