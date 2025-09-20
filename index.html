@@ -417,8 +417,14 @@
         }
 
         // Event listeners
-        startBtn.addEventListener('click', startTimer);
-        pauseBtn.addEventListener('click', pauseTimer);
+        startBtn.addEventListener('click', () => {
+            startTimer();
+            playVibration([50, 50, 50, 50, 50]);
+        });
+        pauseBtn.addEventListener('click', () => {
+            pauseTimer();
+            playVibration(200);
+        });
         resetBtn.addEventListener('click', resetTimer);
         
         // Test sound when changing sound type
