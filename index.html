@@ -91,6 +91,12 @@
                 </div>
             </fieldset>
         </div>
+        
+        <!-- New Vibration Test Button -->
+        <div class="vibrate-test mt-6">
+            <button id="vibrationTestBtn" class="px-6 py-3 rounded-full text-lg font-semibold text-white bg-indigo-500 hover:bg-indigo-600 focus:outline-none focus:ring-4 focus:ring-indigo-300 transition-colors shadow-md">Test Vibration</button>
+        </div>
+
     </div>
 
     <script>
@@ -121,6 +127,7 @@
         const volumeControl = document.getElementById('volumeControl');
         const vibrateToggle = document.getElementById('vibrateToggle');
         const wakeLockToggle = document.getElementById('wakeLockToggle');
+        const vibrationTestBtn = document.getElementById('vibrationTestBtn');
 
         // Audio elements - using base64 encoded sounds for offline use
         let audioContext;
@@ -313,7 +320,7 @@
                 isRunning = true;
                 currentPhase = 'inhale'; // Start with inhale
                 seconds = 0;
-                breathStatus.textContent = currentPhase === 'inhale' ? 'Breathe In' : 'Breathe Out';
+                breathStatus.textContent = 'Breathe In';
                 breathStatus.style.color = currentPhase === 'inhale' ? '#4CAF50' : '#2196F3';
                 
                 // Enable/disable buttons
@@ -341,7 +348,7 @@
                             currentPhase = 'inhale';
                         }
                         seconds = 0;
-                        breathStatus.textContent = currentPhase === 'inhale' ? 'Breathe In    vibrate try' : 'Breathe Out';
+                        breathStatus.textContent = currentPhase === 'inhale' ? 'Breathe In' : 'Breathe Out';
                         breathStatus.style.color = currentPhase === 'inhale' ? '#4CAF50' : '#2196F3';
                         
                         // Play sound and vibration for phase change
@@ -437,6 +444,20 @@
             playVibration(200);
         });
         resetBtn.addEventListener('click', resetTimer);
+        vibrationTestBtn.addEventListener('click', () => {
+            console.log("Testing vibration...");
+            if ('vibrate' in navigator) {
+                console.log("Vibration API is supported. Attempting to vibrate...");
+                const didVibrate = navigator.vibrate(200);
+                if (didVibrate) {
+                    console.log("Vibration was successfully triggered.");
+                } else {
+                    console.log("Vibration was not triggered. Check if system settings allow haptic feedback.");
+                }
+            } else {
+                console.log("Vibration API is not supported on this device.");
+            }
+        });
         
         // Test sound when changing sound type
         soundType.addEventListener('change', () => {
